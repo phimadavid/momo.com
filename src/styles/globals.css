@@ -1,6 +1,31 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Momo Smart palette, taken from the product UI. */
+  --color-canvas: #f5f6fb;
+  --color-surface: #ffffff;
+  --color-line: #e5e8f0;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-navy: #12275e;
+  --color-navy-deep: #0a1633;
+  --color-brand: #2563eb;
+  --color-brand-soft: #eef2ff;
+  --color-pumpkin: #f97316;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+}
+
+/* Momo Smart is a light-surface product; keep the canvas stable. */
+html {
+  color-scheme: light;
+  background-color: var(--color-canvas);
+}
+
+body {
+  color: var(--color-ink);
 }

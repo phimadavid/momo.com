@@ -1,5 +1,17 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Momo Smart LMS — data model
+//
+// Domain overview
+//   Identity      User / StudentProfile / TeacherProfile / Guardian
+//   Org           Department / Term / Course / Section / SectionMeeting / Enrollment
+//   Curriculum    Unit / Lesson / LessonSection / LessonResource / SectionPacing
+//   Learning      LessonProgress / LessonNote
+//   Work          Assignment / Rubric / Submission / Grade / RubricScore
+//   Assessment    Assessment / Question / QuestionOption / Attempt / Response / ProctorEvent
+//   Operations    AttendanceSession / AttendanceRecord / Alert / InterventionAction
+//   Comms         Announcement / Conversation / Message / Notification / CalendarEvent
+//
+// Student-scoped academic records hang off StudentProfile (not User) so that a
+// person can hold several roles without polluting the academic record.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,51 +20,17 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-  // Further reading:
-  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
   url      = env("DATABASE_URL")
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ---------------------------------------------------------------------------
+// Identity & auth
+// ---------------------------------------------------------------------------
 
-  createdBy   User   @relation(fields: [createdById], references: [id])
-  createdById String
-
-  @@index([name])
-}
-
-// Necessary for Next auth
-model Account {
-  id                       String  @id @default(cuid())
-  userId                   String
-  type                     String
-  provider                 String
-  providerAccountId        String
-  refresh_token            String? // @db.Text
-  access_token             String? // @db.Text
-  expires_at               Int?
-  token_type               String?
-  scope                    String?
-  id_token                 String? // @db.Text
-  session_state            String?
-  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  refresh_token_expires_in Int?
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
 }
 
 model User {
@@ -61,9 +39,65 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  accounts      Account[]
-  sessions      Session[]
-  posts         Post[]
+  role          UserRole  @default(STUDENT)
+  /// bcrypt hash for email + password sign-in; null for SSO-only accounts.
+  passwordHash  String?
+  /// Honorific shown in the UI ("Dr.", "Ms.", "Mr.").
+  title         String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+
+  uploadedFiles       FileObject[]
+  gradesGiven         Grade[]                   @relation("GradeGrader")
+  attendanceTaken     AttendanceSession[]       @relation("AttendanceTaker")
+  announcements       Announcement[]
+  announcementReads   AnnouncementRead[]
+  conversations       ConversationParticipant[]
+  messagesSent        Message[]
+  notifications       Notification[]
+  calendarEvents      CalendarEvent[]
+  alertsResolved      Alert[]                   @relation("AlertResolver")
+  interventionActions InterventionAction[]
+
+  @@index([role])
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -72,4 +106,1212 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model StudentProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Human-facing identifier printed on the dashboard, e.g. "OHS-28491".
+  studentNumber  String  @unique
+  gradeLevel     Int
+  graduationYear Int?
+  homeroom       String?
+  /// Cached cumulative GPA; recomputed when grades are released.
+  cumulativeGpa  Float?
+  gpaPercentile  Float?
+  photoUrl       String?
+
+  enrollments      Enrollment[]
+  submissions      Submission[]
+  lessonProgress   LessonProgress[]
+  lessonNotes      LessonNote[]
+  attempts         AssessmentAttempt[]
+  attendance       AttendanceRecord[]
+  alerts           Alert[]
+  accommodations   Accommodation[]
+  guardians        GuardianLink[]
+  officeHourSlots  OfficeHourBooking[]
+  tutorAssignments PeerTutorAssignment[] @relation("TutorAssignmentStudent")
+  tutoringGiven    PeerTutorAssignment[] @relation("TutorAssignmentTutor")
+
+  @@index([gradeLevel])
+}
+
+model TeacherProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  employeeNumber String      @unique
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  officeLocation String?
+  bio            String?
+
+  sections    Section[]
+  officeHours OfficeHour[]
+
+  @@index([departmentId])
+}
+
+enum GuardianRelationship {
+  MOTHER
+  FATHER
+  GUARDIAN
+  OTHER
+}
+
+model Guardian {
+  id           String               @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  relationship GuardianRelationship @default(GUARDIAN)
+  createdAt    DateTime             @default(now())
+
+  students GuardianLink[]
+}
+
+model GuardianLink {
+  id         String  @id @default(cuid())
+  guardianId String
+  studentId  String
+  isPrimary  Boolean @default(false)
+
+  guardian Guardian       @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student  StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, studentId])
+  @@index([studentId])
+}
+
+enum AccommodationType {
+  EXTENDED_TIME
+  REDUCED_DISTRACTION
+  READ_ALOUD
+  BREAKS
+  ASSISTIVE_TECH
+}
+
+model Accommodation {
+  id         String            @id @default(cuid())
+  studentId  String
+  type       AccommodationType
+  /// Time multiplier applied to timed assessments (1.5 = time and a half).
+  multiplier Float             @default(1)
+  notes      String?
+  activeFrom DateTime          @default(now())
+  activeTo   DateTime?
+
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Organisation: departments, terms, courses, sections
+// ---------------------------------------------------------------------------
+
+model Department {
+  id   String @id @default(cuid())
+  name String @unique
+  code String @unique
+
+  courses  Course[]
+  teachers TeacherProfile[]
+}
+
+model Term {
+  id         String   @id @default(cuid())
+  /// e.g. "Fall 2024 – Term 1"
+  name       String
+  schoolYear String
+  startDate  DateTime
+  endDate    DateTime
+  isCurrent  Boolean  @default(false)
+
+  sections Section[]
+
+  @@unique([schoolYear, name])
+  @@index([isCurrent])
+}
+
+enum CourseLevel {
+  REGULAR
+  HONORS
+  AP
+  IB
+  ELECTIVE
+}
+
+model Course {
+  id           String      @id @default(cuid())
+  code         String      @unique
+  name         String
+  description  String?
+  level        CourseLevel @default(REGULAR)
+  credits      Float       @default(1)
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  /// Colour token used by the course cards on the dashboards.
+  colorToken   String?
+
+  sections Section[]
+  units    Unit[]
+
+  @@index([departmentId])
+}
+
+model Section {
+  id        String @id @default(cuid())
+  courseId  String
+  termId    String
+  teacherId String
+
+  /// Display label such as "Sec 1" or "Sec 4.2".
+  code     String
+  /// Class period the section meets in (1, 3, 5 ...).
+  period   Int
+  room     String?
+  capacity Int     @default(30)
+
+  course  Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  term    Term           @relation(fields: [termId], references: [id], onDelete: Cascade)
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+
+  meetings           SectionMeeting[]
+  enrollments        Enrollment[]
+  gradeCategories    GradeCategory[]
+  assignments        Assignment[]
+  assessments        Assessment[]
+  attendanceSessions AttendanceSession[]
+  announcements      Announcement[]
+  calendarEvents     CalendarEvent[]
+  pacing             SectionPacing[]
+  alerts             Alert[]
+  tutorAssignments   PeerTutorAssignment[]
+
+  @@unique([termId, courseId, code])
+  @@index([teacherId, termId])
+  @@index([termId, period])
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+/// Some schedules alternate odd/even period days; ALL means it meets every
+/// occurrence of that weekday.
+enum RotationDay {
+  ALL
+  ODD
+  EVEN
+}
+
+model SectionMeeting {
+  id        String      @id @default(cuid())
+  sectionId String
+  dayOfWeek DayOfWeek
+  rotation  RotationDay @default(ALL)
+  /// Local wall-clock times, "HH:mm" 24h.
+  startTime String
+  endTime   String
+  room      String?
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, dayOfWeek, startTime])
+  @@index([dayOfWeek])
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  DROPPED
+  COMPLETED
+  WITHDRAWN
+}
+
+model Enrollment {
+  id         String           @id @default(cuid())
+  sectionId  String
+  studentId  String
+  status     EnrollmentStatus @default(ACTIVE)
+  seatNo     Int?
+  enrolledAt DateTime         @default(now())
+  droppedAt  DateTime?
+
+  /// Cached running grade for the section, refreshed on every grade release.
+  currentPercent  Float?
+  currentLetter   String?
+  /// Percent-complete against the section's published syllabus.
+  syllabusPercent Float   @default(0)
+
+  section   Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  student   StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  snapshots GradeSnapshot[]
+
+  @@unique([sectionId, studentId])
+  @@index([studentId, status])
+}
+
+/// Point-in-time grade history, used to detect drops ("86% → 73%").
+model GradeSnapshot {
+  id           String   @id @default(cuid())
+  enrollmentId String
+  percent      Float
+  letter       String?
+  capturedAt   DateTime @default(now())
+  reason       String?
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId, capturedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Curriculum
+// ---------------------------------------------------------------------------
+
+model Unit {
+  id          String    @id @default(cuid())
+  courseId    String
+  /// Ordinal within the course; drives "Unit 4" labels and pacing counts.
+  order       Int
+  title       String
+  description String?
+  examDate    DateTime?
+
+  course  Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+  pacing  SectionPacing[]
+
+  assignments Assignment[]
+  assessments Assessment[]
+
+  @@unique([courseId, order])
+}
+
+model Lesson {
+  id               String  @id @default(cuid())
+  unitId           String
+  order            Int
+  title            String
+  summary          String?
+  estimatedMinutes Int     @default(45)
+  isPublished      Boolean @default(true)
+
+  videoUrl             String?
+  videoDurationSeconds Int?
+  transcriptUrl        String?
+
+  /// Lessons can be gated behind completion of an earlier lesson.
+  prerequisiteId String?
+  prerequisite   Lesson?  @relation("LessonPrereq", fields: [prerequisiteId], references: [id], onDelete: SetNull)
+  unlocks        Lesson[] @relation("LessonPrereq")
+
+  unit      Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  sections  LessonSection[]
+  resources LessonResource[]
+  progress  LessonProgress[]
+  notes     LessonNote[]
+  markers   LessonMarker[]
+
+  assignments Assignment[]
+
+  @@unique([unitId, order])
+}
+
+enum LessonSectionKind {
+  READING
+  LAB_PROTOCOL
+  SELF_CHECK
+  FORMULA
+  OVERVIEW
+}
+
+/// Tabbed body content of a lesson (reading material, lab protocol, checks).
+model LessonSection {
+  id       String            @id @default(cuid())
+  lessonId String
+  kind     LessonSectionKind
+  title    String
+  /// Markdown body.
+  body     String
+  order    Int               @default(0)
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, order])
+}
+
+/// Named jump points on the lecture video ("Substrate-Level Phosphorylation").
+model LessonMarker {
+  id              String @id @default(cuid())
+  lessonId        String
+  label           String
+  positionSeconds Int
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, positionSeconds])
+}
+
+enum ResourceKind {
+  PDF
+  SLIDES
+  DOCUMENT
+  SPREADSHEET
+  IMAGE
+  VIDEO
+  LINK
+  TRANSCRIPT
+}
+
+model LessonResource {
+  id       String       @id @default(cuid())
+  lessonId String
+  fileId   String?
+  title    String
+  kind     ResourceKind
+  /// Used for link-only resources that have no stored file.
+  url      String?
+  /// Optional descriptive metadata, e.g. "42 Slides".
+  detail   String?
+  order    Int          @default(0)
+
+  lesson Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  file   FileObject? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([lessonId, order])
+}
+
+enum PacingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+/// Per-section progress through the course units — powers "7 of 10 Modules".
+model SectionPacing {
+  id          String       @id @default(cuid())
+  sectionId   String
+  unitId      String
+  status      PacingStatus @default(NOT_STARTED)
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  section Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  unit    Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, unitId])
+}
+
+enum LessonProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model LessonProgress {
+  id              String               @id @default(cuid())
+  lessonId        String
+  studentId       String
+  status          LessonProgressStatus @default(NOT_STARTED)
+  /// Resume point for the lecture player.
+  positionSeconds Int                  @default(0)
+  percentComplete Float                @default(0)
+  lastViewedAt    DateTime?
+  completedAt     DateTime?
+
+  lesson  Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, studentId])
+  @@index([studentId, lastViewedAt])
+}
+
+model LessonNote {
+  id               String   @id @default(cuid())
+  lessonId         String
+  studentId        String
+  body             String
+  /// Video timestamp the note was taken at, when applicable.
+  timestampSeconds Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  lesson  Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Files
+// ---------------------------------------------------------------------------
+
+model FileObject {
+  id           String   @id @default(cuid())
+  /// Object-storage key; `url` is the resolved public/signed location.
+  storageKey   String   @unique
+  url          String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  lessonResources     LessonResource[]
+  submissionFiles     SubmissionAttachment[]
+  responseAttachments ResponseAttachment[]
+
+  @@index([uploadedById])
+}
+
+// ---------------------------------------------------------------------------
+// Assignments, rubrics, submissions, grades
+// ---------------------------------------------------------------------------
+
+model GradeCategory {
+  id            String @id @default(cuid())
+  sectionId     String
+  name          String
+  weightPercent Float
+
+  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@unique([sectionId, name])
+}
+
+enum AssignmentType {
+  LAB_REPORT
+  ESSAY
+  QUIZ
+  EXAM
+  DIAGRAM
+  WORKSHEET
+  PRACTICUM
+  PROBLEM_SET
+  DISCUSSION
+  PROJECT
+}
+
+enum SubmissionFormat {
+  FILE_UPLOAD
+  TEXT_ENTRY
+  EXTERNAL_LINK
+  ONLINE_ASSESSMENT
+  ON_PAPER
+}
+
+model Assignment {
+  id          String           @id @default(cuid())
+  sectionId   String
+  unitId      String?
+  lessonId    String?
+  categoryId  String?
+  title       String
+  description String?
+  type        AssignmentType
+  format      SubmissionFormat @default(FILE_UPLOAD)
+
+  pointsPossible Float
+  dueAt          DateTime
+  availableFrom  DateTime?
+  closesAt       DateTime?
+  allowLate      Boolean   @default(true)
+  /// Minutes past `dueAt` still accepted as "grace period" rather than late.
+  graceMinutes   Int       @default(0)
+  publishedAt    DateTime?
+
+  rubricId String? @unique
+
+  section  Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  unit     Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  lesson   Lesson?        @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  category GradeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  rubric   Rubric?        @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+
+  submissions Submission[]
+  assessment  Assessment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sectionId, dueAt])
+  @@index([dueAt])
+}
+
+enum RubricType {
+  /// Criterion-based rubric applied automatically in the grading view.
+  STANDARD
+  /// Free-form score entered by the teacher ("Manual Scale" in the queue).
+  MANUAL
+}
+
+model Rubric {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  type        RubricType @default(STANDARD)
+  totalPoints Float
+
+  criteria   RubricCriterion[]
+  assignment Assignment?
+}
+
+model RubricCriterion {
+  id          String  @id @default(cuid())
+  rubricId    String
+  title       String
+  description String?
+  maxPoints   Float
+  order       Int     @default(0)
+
+  rubric Rubric        @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  levels RubricLevel[]
+  scores RubricScore[]
+
+  @@index([rubricId, order])
+}
+
+model RubricLevel {
+  id          String  @id @default(cuid())
+  criterionId String
+  label       String
+  points      Float
+  description String?
+  order       Int     @default(0)
+
+  criterion RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  scores    RubricScore[]
+
+  @@index([criterionId, order])
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  GRADED
+  MISSING
+  EXCUSED
+}
+
+enum Timeliness {
+  ON_TIME
+  GRACE_PERIOD
+  LATE
+}
+
+model Submission {
+  id           String           @id @default(cuid())
+  assignmentId String
+  studentId    String
+  status       SubmissionStatus @default(DRAFT)
+  timeliness   Timeliness?
+  attempt      Int              @default(1)
+
+  submittedAt DateTime?
+  textBody    String?
+  wordCount   Int?
+  externalUrl String?
+
+  assignment  Assignment             @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student     StudentProfile         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attachments SubmissionAttachment[]
+  grade       Grade?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assignmentId, studentId, attempt])
+  @@index([studentId, status])
+  @@index([assignmentId, status])
+  @@index([status, submittedAt])
+}
+
+model SubmissionAttachment {
+  id           String @id @default(cuid())
+  submissionId String
+  fileId       String
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  file       FileObject @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, fileId])
+}
+
+enum GradingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  RELEASED
+}
+
+model Grade {
+  id           String        @id @default(cuid())
+  submissionId String        @unique
+  graderId     String?
+  status       GradingStatus @default(PENDING)
+
+  score       Float?
+  /// Points deducted for lateness, already reflected in `score`.
+  latePenalty Float   @default(0)
+  letter      String?
+  feedback    String?
+
+  gradedAt   DateTime?
+  releasedAt DateTime?
+
+  submission   Submission    @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  grader       User?         @relation("GradeGrader", fields: [graderId], references: [id], onDelete: SetNull)
+  rubricScores RubricScore[]
+
+  @@index([graderId, status])
+}
+
+model RubricScore {
+  id          String  @id @default(cuid())
+  gradeId     String
+  criterionId String
+  levelId     String?
+  points      Float
+  comment     String?
+
+  grade     Grade           @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  criterion RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  level     RubricLevel?    @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  @@unique([gradeId, criterionId])
+}
+
+// ---------------------------------------------------------------------------
+// Online assessments
+// ---------------------------------------------------------------------------
+
+model Assessment {
+  id           String  @id @default(cuid())
+  sectionId    String
+  unitId       String?
+  /// Assessments post to the gradebook through an assignment.
+  assignmentId String? @unique
+
+  title        String
+  instructions String?
+  /// Standards blurb shown in the sidebar, e.g. "AP Bio Standard 3.1 & 3.3".
+  standards    String?
+
+  totalPoints      Float
+  timeLimitMinutes Int?
+  maxAttempts      Int       @default(1)
+  opensAt          DateTime?
+  closesAt         DateTime?
+
+  shuffleQuestions Boolean   @default(false)
+  allowScratchpad  Boolean   @default(true)
+  allowAttachments Boolean   @default(false)
+  /// Tab-switching and focus loss are reported to the proctor when enabled.
+  lockdownEnabled  Boolean   @default(false)
+  publishedAt      DateTime?
+
+  section    Section     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  unit       Unit?       @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  assignment Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+
+  questions Question[]
+  attempts  AssessmentAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sectionId, opensAt])
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  MULTI_SELECT
+  TRUE_FALSE
+  SHORT_ANSWER
+  FREE_RESPONSE
+  NUMERIC
+}
+
+model Question {
+  id           String       @id @default(cuid())
+  assessmentId String
+  order        Int
+  type         QuestionType
+  prompt       String
+  /// Secondary instruction line under the prompt.
+  helperText   String?
+  points       Float        @default(1)
+  /// Shown after the attempt is graded and released.
+  explanation  String?
+  /// Reference answer for free-response / numeric questions.
+  answerKey    String?
+  tolerance    Float?
+
+  assessment Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  options    QuestionOption[]
+  responses  QuestionResponse[]
+
+  @@unique([assessmentId, order])
+}
+
+model QuestionOption {
+  id          String  @id @default(cuid())
+  questionId  String
+  /// Display label, e.g. "A".
+  label       String
+  text        String
+  /// Optional sub-text under the choice.
+  description String?
+  isCorrect   Boolean @default(false)
+  order       Int     @default(0)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, order])
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  EXPIRED
+  VOIDED
+}
+
+model AssessmentAttempt {
+  id           String        @id @default(cuid())
+  assessmentId String
+  studentId    String
+  attempt      Int           @default(1)
+  status       AttemptStatus @default(IN_PROGRESS)
+
+  startedAt      DateTime  @default(now())
+  /// Hard deadline = startedAt + time limit + accommodation extension.
+  expiresAt      DateTime?
+  submittedAt    DateTime?
+  lastAutosaveAt DateTime?
+  /// Extra minutes granted by an accommodation on this attempt.
+  extraMinutes   Int       @default(0)
+
+  autoScore   Float?
+  manualScore Float?
+  totalScore  Float?
+
+  assessment    Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student       StudentProfile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  responses     QuestionResponse[]
+  proctorEvents ProctorEvent[]
+
+  @@unique([assessmentId, studentId, attempt])
+  @@index([studentId, status])
+}
+
+model QuestionResponse {
+  id         String @id @default(cuid())
+  attemptId  String
+  questionId String
+
+  /// Ids of chosen options; single-choice questions hold exactly one.
+  selectedOptionIds String[]
+  textAnswer        String?
+  numericAnswer     Float?
+  /// Per-question working notes captured by the scratchpad.
+  scratchpad        String?
+
+  isFlagged     Boolean   @default(false)
+  isAnswered    Boolean   @default(false)
+  isCorrect     Boolean?
+  pointsAwarded Float?
+  graderComment String?
+  answeredAt    DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  attempt     AssessmentAttempt    @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question    Question             @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attachments ResponseAttachment[]
+
+  @@unique([attemptId, questionId])
+}
+
+model ResponseAttachment {
+  id         String @id @default(cuid())
+  responseId String
+  fileId     String
+
+  response QuestionResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  file     FileObject       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@unique([responseId, fileId])
+}
+
+enum ProctorEventType {
+  TAB_SWITCH
+  WINDOW_BLUR
+  FULLSCREEN_EXIT
+  PASTE
+  HELP_PING
+  RECONNECT
+}
+
+model ProctorEvent {
+  id         String           @id @default(cuid())
+  attemptId  String
+  type       ProctorEventType
+  detail     String?
+  occurredAt DateTime         @default(now())
+
+  attempt AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, occurredAt])
+}
+
+// ---------------------------------------------------------------------------
+// Attendance
+// ---------------------------------------------------------------------------
+
+enum AttendanceSessionStatus {
+  PENDING
+  IN_SESSION
+  SUBMITTED
+}
+
+model AttendanceSession {
+  id          String                  @id @default(cuid())
+  sectionId   String
+  /// Calendar date of the class meeting (time component normalised to 00:00).
+  date        DateTime                @db.Date
+  period      Int
+  status      AttendanceSessionStatus @default(PENDING)
+  takenById   String?
+  submittedAt DateTime?
+  note        String?
+
+  section Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  takenBy User?              @relation("AttendanceTaker", fields: [takenById], references: [id], onDelete: SetNull)
+  records AttendanceRecord[]
+
+  @@unique([sectionId, date])
+  @@index([date, status])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  TARDY
+  REMOTE
+}
+
+model AttendanceRecord {
+  id          String           @id @default(cuid())
+  sessionId   String
+  studentId   String
+  status      AttendanceStatus @default(PRESENT)
+  minutesLate Int?
+  note        String?
+  recordedAt  DateTime         @default(now())
+
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Early intervention
+// ---------------------------------------------------------------------------
+
+enum AlertType {
+  MISSING_WORK
+  GRADE_DROP
+  ATTENDANCE
+  MISSED_ASSESSMENT
+  INACTIVITY
+  BEHAVIOR
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+model Alert {
+  id        String        @id @default(cuid())
+  studentId String
+  sectionId String?
+  type      AlertType
+  severity  AlertSeverity @default(WARNING)
+  status    AlertStatus   @default(OPEN)
+  title     String
+  message   String
+  /// Structured payload: missing assignment ids, previous/current percent, etc.
+  metadata  Json?
+  /// Deadline for acting, e.g. a make-up window closing.
+  dueBy     DateTime?
+
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  student    StudentProfile       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  section    Section?             @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  resolvedBy User?                @relation("AlertResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  actions    InterventionAction[]
+
+  @@index([status, severity])
+  @@index([studentId, status])
+  @@index([sectionId, status])
+}
+
+enum InterventionType {
+  CONTACT_GUARDIAN
+  SCHEDULE_MAKEUP
+  ASSIGN_PEER_TUTOR
+  COUNSELOR_REFERRAL
+  STUDENT_CONFERENCE
+  NOTE
+}
+
+model InterventionAction {
+  id            String           @id @default(cuid())
+  alertId       String
+  type          InterventionType
+  notes         String?
+  payload       Json?
+  performedById String
+  performedAt   DateTime         @default(now())
+
+  alert       Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  performedBy User  @relation(fields: [performedById], references: [id], onDelete: Cascade)
+
+  @@index([alertId, performedAt])
+}
+
+model PeerTutorAssignment {
+  id        String    @id @default(cuid())
+  studentId String
+  tutorId   String
+  sectionId String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  notes     String?
+
+  student StudentProfile @relation("TutorAssignmentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  tutor   StudentProfile @relation("TutorAssignmentTutor", fields: [tutorId], references: [id], onDelete: Cascade)
+  section Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([tutorId])
+}
+
+// ---------------------------------------------------------------------------
+// Communication
+// ---------------------------------------------------------------------------
+
+enum AnnouncementScope {
+  SCHOOL
+  DEPARTMENT
+  COURSE
+  SECTION
+}
+
+model Announcement {
+  id          String            @id @default(cuid())
+  authorId    String
+  scope       AnnouncementScope
+  /// Set when scope is SECTION.
+  sectionId   String?
+  title       String
+  body        String
+  isPinned    Boolean           @default(false)
+  publishedAt DateTime          @default(now())
+  expiresAt   DateTime?
+
+  author  User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  section Section?           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  reads   AnnouncementRead[]
+
+  @@index([scope, publishedAt])
+  @@index([sectionId, publishedAt])
+}
+
+model AnnouncementRead {
+  id             String   @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  subject   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([updatedAt])
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  sentAt         DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sentAt])
+}
+
+enum NotificationType {
+  ASSIGNMENT_DUE
+  GRADE_RELEASED
+  ANNOUNCEMENT
+  MESSAGE
+  ALERT
+  ATTENDANCE
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  /// In-app destination for the notification.
+  linkUrl   String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Calendar & office hours
+// ---------------------------------------------------------------------------
+
+enum CalendarEventType {
+  CLASS
+  EXAM
+  ASSIGNMENT_DUE
+  OFFICE_HOURS
+  SCHOOL_EVENT
+  ADMIN_DEADLINE
+}
+
+model CalendarEvent {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  type        CalendarEventType
+  startAt     DateTime
+  endAt       DateTime?
+  allDay      Boolean           @default(false)
+  location    String?
+  sectionId   String?
+  createdById String?
+
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([startAt])
+  @@index([sectionId, startAt])
+}
+
+enum OfficeHourMode {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
+model OfficeHour {
+  id         String         @id @default(cuid())
+  teacherId  String
+  dayOfWeek  DayOfWeek
+  startTime  String
+  endTime    String
+  mode       OfficeHourMode @default(IN_PERSON)
+  location   String?
+  meetingUrl String?
+  capacity   Int            @default(6)
+  label      String?
+
+  teacher  TeacherProfile      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  bookings OfficeHourBooking[]
+
+  @@index([teacherId, dayOfWeek])
+}
+
+enum BookingStatus {
+  RESERVED
+  ATTENDED
+  CANCELLED
+  NO_SHOW
+}
+
+model OfficeHourBooking {
+  id           String        @id @default(cuid())
+  officeHourId String
+  studentId    String
+  date         DateTime      @db.Date
+  status       BookingStatus @default(RESERVED)
+  topic        String?
+  createdAt    DateTime      @default(now())
+
+  officeHour OfficeHour     @relation(fields: [officeHourId], references: [id], onDelete: Cascade)
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([officeHourId, studentId, date])
+  @@index([date, status])
 }

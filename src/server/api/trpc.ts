@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
+import type { UserRole } from "../../../generated/prisma";
 
 /**
  * 1. CONTEXT
@@ -20,9 +21,6 @@ import { db } from "~/server/db";
  * This section defines the "contexts" that are available in the backend API.
  *
  * These allow you to access things when processing a request, like the database, the session, etc.
- *
- * This helper generates the "internals" for a tRPC context. The API handler and RSC clients each
- * wrap this and provides the required context.
  *
  * @see https://trpc.io/docs/server/context
  */
@@ -80,9 +78,6 @@ export const createTRPCRouter = t.router;
 
 /**
  * Middleware for timing procedure execution and adding an artificial delay in development.
- *
- * You can remove this if you don't like it, but it can help catch unwanted waterfalls by simulating
- * network latency that would occur in production but not in local development.
  */
 const timingMiddleware = t.middleware(async ({ next, path }) => {
   const start = Date.now();
@@ -131,3 +126,62 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+/**
+ * Restricts a procedure to a set of roles. Admins are always allowed through so
+ * that support staff can operate on behalf of a school.
+ */
+const enforceRoles = (roles: UserRole[]) =>
+  t.middleware(({ ctx, next }) => {
+    const user = ctx.session?.user;
+    if (!user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    if (user.role !== "ADMIN" && !roles.includes(user.role)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `This action requires one of: ${roles.join(", ")}.`,
+      });
+    }
+    return next({ ctx: { session: { ...ctx.session, user } } });
+  });
+
+/**
+ * Teacher-only procedure. `ctx.teacherId` is guaranteed for teachers; it is
+ * null for admins acting without a teaching profile, so section-scoped
+ * resolvers should still go through `assertSectionAccess`.
+ */
+export const teacherProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(enforceRoles(["TEACHER"]))
+  .use(({ ctx, next }) =>
+    next({ ctx: { teacherId: ctx.session.user.teacherId } }),
+  );
+
+/**
+ * Student-only procedure. Guarantees a non-null `ctx.studentId`, since every
+ * student-scoped record is keyed by the student profile.
+ */
+export const studentProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(enforceRoles(["STUDENT"]))
+  .use(({ ctx, next }) => {
+    const studentId = ctx.session.user.studentId;
+    if (!studentId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "No student profile is attached to this account.",
+      });
+    }
+    return next({ ctx: { studentId } });
+  });
+
+/** Administrative procedure for school-wide configuration. */
+export const adminProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(enforceRoles(["ADMIN"]));
+
+/** Either side of the classroom — used by shared reads such as announcements. */
+export const staffOrStudentProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(enforceRoles(["TEACHER", "STUDENT"]));
