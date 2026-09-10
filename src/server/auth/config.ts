@@ -139,9 +139,8 @@ export const authConfig = {
     }),
   ],
   callbacks: {
-    jwt: async ({ token, user, trigger }) => {
-      // On sign-in the authorize() result is available; afterwards the token
-      // already carries everything, and `update` re-reads it.
+    jwt: async ({ token, user }) => {
+      // On sign-in the authorize() result is available and already authoritative.
       if (user) {
         const claims: SessionClaims = {
           id: asString(user.id) ?? "",
@@ -153,26 +152,33 @@ export const authConfig = {
       }
 
       const current = readClaims(token);
-      if (trigger === "update" && current.id) {
-        const fresh = await db.user.findUnique({
-          where: { id: current.id },
-          select: {
-            role: true,
-            studentProfile: { select: { id: true } },
-            teacherProfile: { select: { id: true } },
-          },
-        });
-        if (fresh) {
-          return {
-            ...token,
-            role: fresh.role,
-            studentId: fresh.studentProfile?.id ?? null,
-            teacherId: fresh.teacherProfile?.id ?? null,
-          };
-        }
-      }
+      if (!current.id) return null;
 
-      return token;
+      // A JWT outlives the row it describes, so re-read the account on each
+      // request: deleted or deactivated users lose access immediately instead
+      // of staying signed in until the token expires, and role or profile
+      // changes apply without a fresh sign-in. `auth()` is cached per request,
+      // so this costs one indexed lookup per request.
+      const account = await db.user.findUnique({
+        where: { id: current.id },
+        select: {
+          isActive: true,
+          role: true,
+          studentProfile: { select: { id: true } },
+          teacherProfile: { select: { id: true } },
+        },
+      });
+
+      // Returning null invalidates the session; the caller sees a signed-out
+      // visitor rather than a 500 from a dangling user id.
+      if (!account?.isActive) return null;
+
+      return {
+        ...token,
+        role: account.role,
+        studentId: account.studentProfile?.id ?? null,
+        teacherId: account.teacherProfile?.id ?? null,
+      };
     },
     session: ({ session, token }) => {
       const claims = readClaims(token);

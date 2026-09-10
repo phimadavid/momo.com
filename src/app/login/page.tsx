@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Wordmark } from "~/app/_components/brand";
 import { CheckIcon } from "~/app/_components/icons";
 import { auth } from "~/server/auth";
+import { homeForRole } from "~/server/auth/home";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
@@ -20,19 +21,19 @@ const HIGHLIGHTS = [
 
 export default async function LoginPage() {
   const session = await auth();
-  if (session?.user) redirect("/");
+  if (session?.user) redirect(homeForRole(session.user.role));
 
   return (
-    <main className="min-h-screen bg-canvas lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <main className="bg-canvas min-h-screen lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       {/* Brand panel — hidden on small screens, where the form leads. */}
-      <aside className="relative hidden overflow-hidden bg-navy-deep p-12 lg:flex lg:flex-col lg:justify-between">
+      <aside className="bg-navy-deep relative hidden overflow-hidden p-12 lg:flex lg:flex-col lg:justify-between">
         <div
           aria-hidden="true"
-          className="absolute -top-32 -right-24 size-96 rounded-full bg-brand/25 blur-3xl"
+          className="bg-brand/25 absolute -top-32 -right-24 size-96 rounded-full blur-3xl"
         />
         <div
           aria-hidden="true"
-          className="absolute -bottom-40 -left-24 size-96 rounded-full bg-pumpkin/15 blur-3xl"
+          className="bg-pumpkin/15 absolute -bottom-40 -left-24 size-96 rounded-full blur-3xl"
         />
 
         <div className="relative">
@@ -48,8 +49,11 @@ export default async function LoginPage() {
           </h2>
           <ul className="mt-8 space-y-3.5">
             {HIGHLIGHTS.map((highlight) => (
-              <li key={highlight} className="flex items-start gap-3 text-white/80">
-                <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand/30 text-white">
+              <li
+                key={highlight}
+                className="flex items-start gap-3 text-white/80"
+              >
+                <span className="bg-brand/30 mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-white">
                   <CheckIcon className="size-3.5" />
                 </span>
                 <span className="text-[15px]">{highlight}</span>
@@ -73,8 +77,8 @@ export default async function LoginPage() {
           <LoginForm />
         </div>
 
-        <p className="text-center text-sm text-muted">
-          <Link href="/" className="font-semibold text-brand hover:underline">
+        <p className="text-muted text-center text-sm">
+          <Link href="/" className="text-brand font-semibold hover:underline">
             ← Back to home
           </Link>
         </p>

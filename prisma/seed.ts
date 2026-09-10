@@ -1497,6 +1497,93 @@ async function main() {
     });
   }
 
+  // --- Message threads ------------------------------------------------------
+  const userIdOf = (name: string) => students.get(name)!.userId;
+
+  const conversations: Array<{
+    student: string;
+    subject: string;
+    messages: Array<{
+      from: "teacher" | "student";
+      body: string;
+      minutesAgo: number;
+    }>;
+  }> = [
+    {
+      student: "Marcus Rivera",
+      subject: "Lab 4 write-up question",
+      messages: [
+        {
+          from: "student",
+          body: "Dr. Chen — for the enzyme catalysis write-up, should the error analysis cover the pipetting variance as well, or just the temperature drift?",
+          minutesAgo: 190,
+        },
+        {
+          from: "teacher",
+          body: "Cover both. Temperature drift is the dominant term, but a sentence on pipetting variance shows you understand where the noise comes from.",
+          minutesAgo: 120,
+        },
+        {
+          from: "student",
+          body: "Got it, thank you! I'll have it in before tonight's deadline.",
+          minutesAgo: 95,
+        },
+      ],
+    },
+    {
+      student: "Ethan Brooks",
+      subject: "Missing work — catching up",
+      messages: [
+        {
+          from: "teacher",
+          body: "Ethan, I have three missing items for you in AP Bio Sec 2. Can you come to office hours today at 3:00 so we can build a catch-up plan?",
+          minutesAgo: 55,
+        },
+      ],
+    },
+  ];
+
+  for (const thread of conversations) {
+    const conversation = await db.conversation.create({
+      data: {
+        subject: thread.subject,
+        participants: {
+          create: [
+            { userId: chenUser.id, lastReadAt: NOW },
+            { userId: userIdOf(thread.student) },
+          ],
+        },
+      },
+    });
+
+    for (const message of thread.messages) {
+      await db.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId:
+            message.from === "teacher" ? chenUser.id : userIdOf(thread.student),
+          body: message.body,
+          sentAt: new Date(NOW.getTime() - message.minutesAgo * 60_000),
+        },
+      });
+    }
+
+    // Leave the student's last word unread so the inbox shows a badge.
+    const lastFromStudent = thread.messages
+      .filter((message) => message.from === "student")
+      .at(-1);
+    if (lastFromStudent) {
+      await db.conversationParticipant.updateMany({
+        where: { conversationId: conversation.id, userId: chenUser.id },
+        data: {
+          lastReadAt: new Date(
+            NOW.getTime() - (lastFromStudent.minutesAgo + 5) * 60_000,
+          ),
+        },
+      });
+    }
+  }
+
   console.log("Seed complete:");
   console.log(`  term       ${term.name}`);
   console.log(
