@@ -17,6 +17,8 @@ npm run db:seed            # load a full demo school
 npm run dev
 ```
 
+test
+
 `npm run db:seed` builds one coherent slice of a school: Dr. Aris Chen teaching
 four sections, a unit of AP Biology lessons, a rubric-graded lab report, a
 20-question timed assessment mid-attempt, today's attendance and three at-risk
