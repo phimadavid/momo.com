@@ -1,8 +1,11 @@
 import { type Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { DemoBanner } from "~/app/_components/demo-banner";
+import { env } from "~/env";
 import { auth } from "~/server/auth";
 import { homeForRole } from "~/server/auth/home";
+import { isDemoEmail } from "~/server/demo/accounts";
 import { api } from "~/trpc/server";
 import { Sidebar } from "./_components/sidebar";
 import { Topbar } from "./_components/topbar";
@@ -40,6 +43,9 @@ export default async function StudentLayout({
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {env.DEMO_MODE && isDemoEmail(session.user.email) && (
+          <DemoBanner persona={studentName} />
+        )}
         <Topbar
           termName={overview.term?.name ?? "Current term"}
           studentName={studentName}

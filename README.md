@@ -20,7 +20,30 @@ npm run dev
 `npm run db:seed` builds one coherent slice of a school: Dr. Aris Chen teaching
 four sections, a unit of AP Biology lessons, a rubric-graded lab report, a
 20-question timed assessment mid-attempt, today's attendance and three at-risk
-students. It is idempotent — re-running resets the seeded rows.
+students. It is idempotent — re-running resets the seeded rows. The seed
+itself lives in `src/server/demo/seed.ts` (`seedDemoSchool`); `prisma/seed.ts`
+is the CLI wrapper.
+
+## Public demo & waitlist
+
+`/demo` is the page the landing page's "Try the live demo" and "Join the
+waitlist" buttons lead to:
+
+- **Try as Teacher / Try as Student** signs the visitor straight into the
+  seeded Dr. Aris Chen or Alex Rivera account (`src/app/demo/actions.ts`).
+  Inside the app, a banner marks the session as a demo and links back to the
+  waitlist.
+- **Request early access** stores email, school, role and a note in
+  `WaitlistEntry`. A repeat email updates the existing row. Browse the entries
+  with `npm run db:studio`.
+- **Scheduled reset.** `GET /api/demo/reset` with
+  `Authorization: Bearer $CRON_SECRET` re-runs the seed so visitors' changes
+  do not pile up. `vercel.json` schedules it every 6 hours; any external cron
+  that sends the header works too. `WaitlistEntry` is never reset.
+
+The one-click sign-in, the banner and the reset route are only active when
+`DEMO_MODE="true"`. With it off, `/demo` shows just the waitlist. **A reset
+deletes every user**, so only enable `DEMO_MODE` on a dedicated demo database.
 
 ## Data model
 
@@ -39,6 +62,7 @@ roles without polluting the academic record.
 | Operations | `AttendanceSession`, `AttendanceRecord`, `Alert`, `InterventionAction`, `PeerTutorAssignment` |
 | Communication | `Announcement`, `Conversation`, `Message`, `Notification`, `CalendarEvent`, `OfficeHour`, `OfficeHourBooking` |
 | Files | `FileObject` with join tables for submissions, responses and lesson resources |
+| Growth | `WaitlistEntry` — early-access requests from `/demo` |
 
 Notable modelling decisions:
 

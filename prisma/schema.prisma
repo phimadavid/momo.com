@@ -1315,3 +1315,25 @@ model OfficeHourBooking {
   @@unique([officeHourId, studentId, date])
   @@index([date, status])
 }
+
+// ---------------------------------------------------------------------------
+// Growth
+// ---------------------------------------------------------------------------
+
+/// Early-access requests from the public /demo page. Deliberately unrelated to
+/// `User` and untouched by the demo reset, so leads survive every re-seed.
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  school    String
+  /// "Teacher" | "Administrator" | "IT / District" | "Other"
+  role      String
+  message   String?
+  /// Which call to action captured the entry.
+  source    String   @default("demo")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}

@@ -14,6 +14,17 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     /** UploadThing API token. Optional so the app runs without it; submission uploads need it. */
     UPLOADTHING_TOKEN: z.string().optional(),
+    /**
+     * Turns on the public demo: one-click sign-in from /demo, the in-app demo
+     * banner and the scheduled reset route. Only enable on a dedicated demo
+     * database — a reset wipes every user.
+     */
+    DEMO_MODE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    /** Bearer token the demo reset route requires. */
+    CRON_SECRET: z.string().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -36,6 +47,8 @@ export const env = createEnv({
     AUTH_SECRET: process.env.AUTH_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     UPLOADTHING_TOKEN: process.env.UPLOADTHING_TOKEN,
+    DEMO_MODE: process.env.DEMO_MODE,
+    CRON_SECRET: process.env.CRON_SECRET,
     NODE_ENV: process.env.NODE_ENV,
   },
   /**

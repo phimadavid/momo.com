@@ -3,16 +3,9 @@
 import { useActionState, useId, useState } from "react";
 
 import { AlertIcon, ArrowRightIcon, LockIcon } from "~/app/_components/icons";
+// Accounts created by `npm run db:seed`, offered as one-tap fill.
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from "~/server/demo/accounts";
 import { login, type LoginState } from "./actions";
-
-/** Accounts created by `npm run db:seed`, offered as one-tap fill. */
-const DEMO_ACCOUNTS = [
-  { role: "Teacher", name: "Dr. Aris Chen", email: "aris.chen@momosmart.edu" },
-  { role: "Student", name: "Alex Rivera", email: "ohs-28491@student.momosmart.edu" },
-  { role: "Admin", name: "Registrar", email: "registrar@momosmart.edu" },
-] as const;
-
-const DEMO_PASSWORD = "momo1234";
 
 const initialState: LoginState = { error: null };
 
