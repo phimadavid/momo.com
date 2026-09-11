@@ -1115,6 +1115,222 @@ async function main() {
   });
   console.log(`  graded sample submission ${gracedSubmission.id}`);
 
+  // --- Alex Rivera's student dashboard -------------------------------------
+  // Work coming due in Alex's other courses, for the "Due Soon" rail.
+  await db.assignment.createMany({
+    data: [
+      {
+        sectionId: apushSec.id,
+        title: "DBQ Outline: Antebellum Era",
+        type: "ESSAY",
+        format: "FILE_UPLOAD",
+        pointsPossible: 30,
+        dueAt: at(1, 23, 59),
+        publishedAt: at(-5),
+      },
+      {
+        sectionId: precalcSec.id,
+        title: "Trigonometric Identities #9",
+        type: "PROBLEM_SET",
+        format: "EXTERNAL_LINK",
+        pointsPossible: 25,
+        dueAt: at(3, 23, 59),
+        publishedAt: at(-4),
+      },
+      {
+        sectionId: englitSec.id,
+        title: "Gatsby Socratic Seminar",
+        type: "DISCUSSION",
+        format: "ON_PAPER",
+        pointsPossible: 20,
+        dueAt: at(12, 15, 0),
+        publishedAt: at(-6),
+      },
+    ],
+  });
+
+  // Released quiz and test grades. Students earn one star per point on these,
+  // so they drive the Star Points card; the AP Bio ones cover all of Sec 2 so
+  // the grade-level rank has peers to compare against.
+  const gradedHistory: Array<{
+    sectionId: string;
+    categoryId?: string;
+    graderId: string;
+    title: string;
+    type: "QUIZ" | "EXAM";
+    points: number;
+    daysAgo: number;
+    scores: Record<string, number>;
+  }> = [
+    {
+      sectionId: bioSec2.id,
+      categoryId: assessmentCategory2.id,
+      graderId: chenUser.id,
+      title: "Unit 3 Cellular Bio Test",
+      type: "EXAM",
+      points: 100,
+      daysAgo: 1,
+      scores: {
+        "Alex Rivera": 95,
+        "Marcus Rivera": 86,
+        "Maya Lin": 98,
+        "Sofia Ramirez": 89,
+        "Ethan Brooks": 62,
+      },
+    },
+    {
+      sectionId: bioSec2.id,
+      categoryId: assessmentCategory2.id,
+      graderId: chenUser.id,
+      title: "Photosynthesis Speed Quiz",
+      type: "QUIZ",
+      points: 20,
+      daysAgo: 3,
+      scores: {
+        "Alex Rivera": 20,
+        "Marcus Rivera": 17,
+        "Maya Lin": 19,
+        "Sofia Ramirez": 18,
+        "Ethan Brooks": 11,
+      },
+    },
+    {
+      sectionId: precalcSec.id,
+      graderId: patelUser.id,
+      title: "Trigonometry Quiz #4",
+      type: "QUIZ",
+      points: 20,
+      daysAgo: 5,
+      scores: { "Alex Rivera": 18 },
+    },
+    {
+      sectionId: apushSec.id,
+      graderId: davisUser.id,
+      title: "Market Revolution Quiz",
+      type: "QUIZ",
+      points: 25,
+      daysAgo: 9,
+      scores: { "Alex Rivera": 24 },
+    },
+    {
+      sectionId: bioSec2.id,
+      categoryId: assessmentCategory2.id,
+      graderId: chenUser.id,
+      title: "Unit 2 Cell Structure Test",
+      type: "EXAM",
+      points: 100,
+      daysAgo: 14,
+      scores: {
+        "Alex Rivera": 92,
+        "Marcus Rivera": 84,
+        "Maya Lin": 97,
+        "Sofia Ramirez": 90,
+        "Ethan Brooks": 68,
+      },
+    },
+    {
+      sectionId: apushSec.id,
+      graderId: davisUser.id,
+      title: "Colonial Era Unit Test",
+      type: "EXAM",
+      points: 100,
+      daysAgo: 17,
+      scores: { "Alex Rivera": 96 },
+    },
+    {
+      sectionId: englitSec.id,
+      graderId: vanceUser.id,
+      title: "Puritan Literature Test",
+      type: "EXAM",
+      points: 100,
+      daysAgo: 19,
+      scores: { "Alex Rivera": 97 },
+    },
+    {
+      sectionId: precalcSec.id,
+      graderId: patelUser.id,
+      title: "Functions & Graphs Test",
+      type: "EXAM",
+      points: 100,
+      daysAgo: 22,
+      scores: { "Alex Rivera": 90 },
+    },
+    {
+      sectionId: englitSec.id,
+      graderId: vanceUser.id,
+      title: "Vocabulary Quiz 3",
+      type: "QUIZ",
+      points: 20,
+      daysAgo: 24,
+      scores: { "Alex Rivera": 19 },
+    },
+    {
+      sectionId: bioSec2.id,
+      categoryId: assessmentCategory2.id,
+      graderId: chenUser.id,
+      title: "Unit 1 Chemistry of Life Test",
+      type: "EXAM",
+      points: 100,
+      daysAgo: 28,
+      scores: {
+        "Alex Rivera": 91,
+        "Marcus Rivera": 88,
+        "Maya Lin": 95,
+        "Sofia Ramirez": 87,
+        "Ethan Brooks": 71,
+      },
+    },
+  ];
+
+  // Written feedback on a few of Alex's released grades.
+  const alexFeedback: Record<string, string> = {
+    "Unit 3 Cellular Bio Test":
+      "Strong free-response on membrane transport. Review the sodium-potassium pump question.",
+    "Photosynthesis Speed Quiz":
+      "Perfect score — clean reasoning on the light-dependent reactions.",
+    "Market Revolution Quiz":
+      "Excellent use of the Lowell mill documents as evidence.",
+  };
+
+  for (const entry of gradedHistory) {
+    const assignment = await db.assignment.create({
+      data: {
+        sectionId: entry.sectionId,
+        categoryId: entry.categoryId,
+        title: entry.title,
+        type: entry.type,
+        format: entry.type === "QUIZ" ? "ONLINE_ASSESSMENT" : "ON_PAPER",
+        pointsPossible: entry.points,
+        dueAt: at(-entry.daysAgo - 1, 10),
+        publishedAt: at(-entry.daysAgo - 8),
+      },
+    });
+
+    for (const [name, score] of Object.entries(entry.scores)) {
+      await db.submission.create({
+        data: {
+          assignmentId: assignment.id,
+          studentId: studentId(name),
+          status: "GRADED",
+          timeliness: "ON_TIME",
+          submittedAt: at(-entry.daysAgo - 1, 10),
+          grade: {
+            create: {
+              status: "RELEASED",
+              score,
+              letter: letter((score / entry.points) * 100),
+              feedback:
+                name === "Alex Rivera" ? alexFeedback[entry.title] : undefined,
+              graderId: entry.graderId,
+              gradedAt: at(-entry.daysAgo, 8),
+              releasedAt: at(-entry.daysAgo, 8),
+            },
+          },
+        },
+      });
+    }
+  }
+
   // --- Timed assessment -----------------------------------------------------
   const assessment = await db.assessment.create({
     data: {

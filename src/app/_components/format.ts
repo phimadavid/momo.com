@@ -1,4 +1,4 @@
-/** Presentation helpers shared by the teacher screens. */
+/** Presentation helpers shared by the teacher and student screens. */
 
 /** "08:15" → "08:15 AM" */
 export function clock(time: string | null): string {

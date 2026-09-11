@@ -3,7 +3,7 @@ import {
   MegaphoneIcon,
   TrendUpIcon,
 } from "~/app/_components/icons";
-import { Card, CardHeader, EmptyState, Pill } from "./ui";
+import { Card, CardHeader, EmptyState, Pill } from "~/app/_components/ui";
 
 type SectionPerformance = {
   sectionId: string;

@@ -68,7 +68,7 @@ tRPC routers live in `src/server/api/routers/` and are mounted in
 | `assessment` | attempts, autosave, flagging, proctor events, auto-scoring, item analysis |
 | `attendance` | daily period schedule, taking attendance, rates |
 | `alert` | at-risk detection and logged interventions |
-| `dashboard` | teacher command center and student overview aggregates |
+| `dashboard` | teacher command center, student overview and Star Points aggregates |
 | `announcement` / `message` / `notification` | communication |
 | `calendar` | agenda, timetable, office hours and bookings |
 
@@ -97,6 +97,10 @@ Shared server logic lives in `src/server/lib/`:
   section averages, late classification, grade distribution buckets
 - `permissions.ts` — the row-level guards above
 - `dates.ts` — school-day helpers: weekday, term week, odd/even rotation
+- `stars.ts` — Star Points: one star per point on released grades for any
+  graded work (derived, never stored) and the reward tiers they unlock
+- `src/server/uploadthing.ts` — UploadThing file router for submission
+  uploads; needs `UPLOADTHING_TOKEN`
 
 ## Scripts
 

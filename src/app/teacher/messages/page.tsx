@@ -3,9 +3,9 @@ import Link from "next/link";
 
 import { ChatIcon, MailIcon } from "~/app/_components/icons";
 import { api } from "~/trpc/server";
-import { timeAgo } from "../_components/format";
+import { timeAgo } from "~/app/_components/format";
 import { PageHeader } from "../_components/page-header";
-import { Avatar, Card, CardHeader, EmptyState } from "../_components/ui";
+import { Avatar, Card, CardHeader, EmptyState } from "~/app/_components/ui";
 import { ReplyForm } from "./reply-form";
 
 export const metadata: Metadata = { title: "Messages · Momo Smart" };

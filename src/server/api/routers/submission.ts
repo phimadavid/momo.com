@@ -13,9 +13,28 @@ import {
   assertSubmissionAccess,
   assertTeachesSection,
 } from "~/server/lib/permissions";
+import type { PrismaClient } from "../../../../generated/prisma";
 
 const countWords = (text: string) =>
   text.trim().split(/\s+/).filter(Boolean).length;
+
+/** Students may only attach files they uploaded themselves. */
+async function assertOwnFiles(
+  db: PrismaClient,
+  userId: string,
+  fileIds: string[],
+) {
+  if (fileIds.length === 0) return;
+  const owned = await db.fileObject.count({
+    where: { id: { in: fileIds }, uploadedById: userId },
+  });
+  if (owned !== new Set(fileIds).size) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You can only attach files you uploaded.",
+    });
+  }
+}
 
 export const submissionRouter = createTRPCRouter({
   /** Registers an uploaded file so it can be attached to work. */
@@ -61,6 +80,7 @@ export const submissionRouter = createTRPCRouter({
         });
       }
       await assertEnrolled(ctx.db, ctx.session.user, assignment.sectionId);
+      await assertOwnFiles(ctx.db, ctx.session.user.id, input.fileIds);
 
       const existing = await ctx.db.submission.findFirst({
         where: { assignmentId: input.assignmentId, studentId: ctx.studentId },
@@ -136,6 +156,7 @@ export const submissionRouter = createTRPCRouter({
         });
       }
       await assertEnrolled(ctx.db, ctx.session.user, assignment.sectionId);
+      await assertOwnFiles(ctx.db, ctx.session.user.id, input.fileIds);
 
       const now = new Date();
       if (assignment.closesAt && now > assignment.closesAt) {

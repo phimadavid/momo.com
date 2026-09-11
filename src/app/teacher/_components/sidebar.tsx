@@ -11,8 +11,8 @@ import {
   SettingsIcon,
   StarIcon,
 } from "~/app/_components/icons";
-import { Nav, type NavItem } from "./nav";
-import { Avatar } from "./ui";
+import { Nav, type NavItem } from "~/app/_components/nav";
+import { Avatar } from "~/app/_components/ui";
 
 export function Sidebar({
   teacherName,
@@ -28,7 +28,7 @@ export function Sidebar({
   unreadMessages: number;
 }) {
   const items: NavItem[] = [
-    { label: "Dashboard", href: "/teacher" },
+    { label: "Dashboard", href: "/teacher", exact: true },
     { label: "Courses", href: "/teacher/courses" },
     {
       label: "Assignments",

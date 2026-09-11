@@ -3,7 +3,13 @@ import { type Metadata } from "next";
 import { DownloadIcon, StarIcon } from "~/app/_components/icons";
 import { api } from "~/trpc/server";
 import { PageHeader, SectionTabs } from "../_components/page-header";
-import { Avatar, Card, CardHeader, EmptyState, Pill } from "../_components/ui";
+import {
+  Avatar,
+  Card,
+  CardHeader,
+  EmptyState,
+  Pill,
+} from "~/app/_components/ui";
 
 export const metadata: Metadata = { title: "Grades · Momo Smart" };
 export const dynamic = "force-dynamic";

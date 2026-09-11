@@ -8,9 +8,9 @@ import {
   UsersIcon,
 } from "~/app/_components/icons";
 import { api } from "~/trpc/server";
-import { clock } from "../_components/format";
+import { clock } from "~/app/_components/format";
 import { PageHeader } from "../_components/page-header";
-import { Card, EmptyState, Pill } from "../_components/ui";
+import { Card, EmptyState, Pill } from "~/app/_components/ui";
 
 export const metadata: Metadata = { title: "Courses · Momo Smart" };
 export const dynamic = "force-dynamic";

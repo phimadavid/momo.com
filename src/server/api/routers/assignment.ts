@@ -242,6 +242,117 @@ export const assignmentRouter = createTRPCRouter({
       }));
     }),
 
+  /**
+   * The "My Assignments" page: every published assignment in the student's
+   * active sections this term, with their latest submission, bucketed into
+   * to-do / submitted / completed. Grades appear only once released.
+   */
+  mine: studentProcedure.query(async ({ ctx }) => {
+    const assignments = await ctx.db.assignment.findMany({
+      where: {
+        publishedAt: { not: null },
+        section: {
+          term: { isCurrent: true },
+          enrollments: {
+            some: { studentId: ctx.studentId, status: "ACTIVE" },
+          },
+        },
+      },
+      orderBy: { dueAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        type: true,
+        format: true,
+        pointsPossible: true,
+        dueAt: true,
+        closesAt: true,
+        allowLate: true,
+        section: {
+          select: {
+            id: true,
+            period: true,
+            course: { select: { name: true, colorToken: true } },
+            teacher: {
+              select: { user: { select: { name: true, title: true } } },
+            },
+          },
+        },
+        rubric: {
+          select: {
+            id: true,
+            title: true,
+            totalPoints: true,
+            criteria: {
+              orderBy: { order: "asc" },
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                maxPoints: true,
+              },
+            },
+          },
+        },
+        submissions: {
+          where: { studentId: ctx.studentId },
+          orderBy: { attempt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            timeliness: true,
+            submittedAt: true,
+            updatedAt: true,
+            textBody: true,
+            externalUrl: true,
+            attachments: {
+              select: {
+                file: {
+                  select: {
+                    id: true,
+                    url: true,
+                    fileName: true,
+                    sizeBytes: true,
+                  },
+                },
+              },
+            },
+            grade: {
+              select: {
+                status: true,
+                score: true,
+                letter: true,
+                feedback: true,
+                releasedAt: true,
+                grader: { select: { name: true, title: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return assignments.map(({ submissions, ...assignment }) => {
+      const latest = submissions[0] ?? null;
+      // Students only ever see a grade once the teacher has released it.
+      const grade = latest?.grade?.status === "RELEASED" ? latest.grade : null;
+      const bucket: "TODO" | "SUBMITTED" | "COMPLETED" =
+        grade || latest?.status === "EXCUSED"
+          ? "COMPLETED"
+          : latest?.status === "SUBMITTED" || latest?.status === "GRADED"
+            ? "SUBMITTED"
+            : "TODO";
+
+      return {
+        ...assignment,
+        submission: latest ? { ...latest, grade } : null,
+        bucket,
+      };
+    });
+  }),
+
   // --- Authoring ------------------------------------------------------------
 
   create: teacherProcedure

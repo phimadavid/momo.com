@@ -8,6 +8,8 @@ export type NavItem = {
   href: string;
   badge?: number;
   dot?: boolean;
+  /** Only active on this exact path — for a section root like "/teacher". */
+  exact?: boolean;
 };
 
 /**
@@ -25,10 +27,8 @@ export function Nav({
 
   return (
     <nav className="mt-6 space-y-1">
-      {items.map(({ label, href, badge, dot }) => {
-        // "/teacher" must not stay active on its own sub-routes.
-        const active =
-          href === "/teacher" ? pathname === href : pathname.startsWith(href);
+      {items.map(({ label, href, badge, dot, exact }) => {
+        const active = exact ? pathname === href : pathname.startsWith(href);
 
         return (
           <Link

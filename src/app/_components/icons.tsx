@@ -733,3 +733,228 @@ export function TrendUpIcon({ className = base }: IconProps) {
     </svg>
   );
 }
+
+export function PlayIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M10.25 8.75v6.5L15.5 12l-5.25-3.25Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function TrophyIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M8 4h8v5a4 4 0 0 1-8 0V4ZM8 6H5v1.5A3.5 3.5 0 0 0 8.5 11M16 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 13v4m-3.5 3h7M10 17h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function FileIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8L14 3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 3.5V8h4.5M9 12.5h6M9 16h4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function UserCheckIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M3.5 19.5c.8-3 3.4-5 6.5-5 1.2 0 2.3.3 3.2.8M15 17.5l2 2 3.5-4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Stroked icon helper for the media and lesson icons below. */
+function StrokeIcon({ className, d }: { className: string; d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d={d}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function PlayFillIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M8 5.2v13.6a.8.8 0 0 0 1.2.7l10.6-6.8a.8.8 0 0 0 0-1.4L9.2 4.5A.8.8 0 0 0 8 5.2Z" />
+    </svg>
+  );
+}
+
+export function PauseIcon({ className = base }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="6.5" y="5" width="3.8" height="14" rx="1" />
+      <rect x="13.7" y="5" width="3.8" height="14" rx="1" />
+    </svg>
+  );
+}
+
+export function BackTenIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4.5 9m0-4.5V9H9M10 10v5m2.5-2.5a1.5 2.5 0 1 0 3 0 1.5 2.5 0 1 0-3 0"
+    />
+  );
+}
+
+export function ForwardTenIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3L19.5 9m0-4.5V9H15M9 10v5m2.5-2.5a1.5 2.5 0 1 0 3 0 1.5 2.5 0 1 0-3 0"
+    />
+  );
+}
+
+export function VolumeIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M4 9.5h3.2L11.5 6v12l-4.3-3.5H4v-5ZM15 9.5a3.5 3.5 0 0 1 0 5M17.5 7a7 7 0 0 1 0 10"
+    />
+  );
+}
+
+export function VolumeOffIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M4 9.5h3.2L11.5 6v12l-4.3-3.5H4v-5ZM15.5 9.5l5 5m0-5-5 5"
+    />
+  );
+}
+
+export function CaptionsIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M5 5.5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2ZM10.5 10.3a2.2 2.2 0 1 0 0 3.4M16.5 10.3a2.2 2.2 0 1 0 0 3.4"
+    />
+  );
+}
+
+export function NotePenIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M4.5 19.5h4L19 9a2.1 2.1 0 0 0-3-3L5.5 16.5v3ZM14 8l3 3"
+    />
+  );
+}
+
+export function ExpandIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M4.5 9V4.5H9M19.5 9V4.5H15M4.5 15v4.5H9M19.5 15v4.5H15"
+    />
+  );
+}
+
+export function ListIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"
+    />
+  );
+}
+
+export function BookmarkIcon({ className = base }: IconProps) {
+  return <StrokeIcon className={className} d="M7 4h10v16l-5-3.5L7 20V4Z" />;
+}
+
+export function FlaskIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M9.5 3.5h5M10.5 3.5V9l-5.3 9.2A1.5 1.5 0 0 0 6.5 20.5h11a1.5 1.5 0 0 0 1.3-2.3L13.5 9V3.5M7.6 14.5h8.8"
+    />
+  );
+}
+
+export function BookOpenIcon({ className = base }: IconProps) {
+  return (
+    <StrokeIcon
+      className={className}
+      d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5m0-13c2-1.5 5-2 8-1.5v13c-3-.5-6 0-8 1.5m0-13v13"
+    />
+  );
+}

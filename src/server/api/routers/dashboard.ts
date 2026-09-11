@@ -7,6 +7,11 @@ import {
 } from "~/server/api/trpc";
 import { dayOfWeekOf, toDateOnly, weekOfTerm } from "~/server/lib/dates";
 import { computeGpa, distributionOf, round } from "~/server/lib/grading";
+import {
+  rewardProgress,
+  STAR_ASSIGNMENT_TYPES,
+  starsFor,
+} from "~/server/lib/stars";
 
 export const dashboardRouter = createTRPCRouter({
   /**
@@ -341,6 +346,107 @@ export const dashboardRouter = createTRPCRouter({
       todayDate: today,
       openAlerts,
       missingWork: pendingSubmissions,
+    };
+  }),
+
+  /**
+   * Star Points accumulator: one star per point on released quiz and test
+   * grades, the recent ledger, reward progress, and the student's rank among
+   * their grade-level peers.
+   */
+  studentStars: studentProcedure.query(async ({ ctx }) => {
+    const profile = await ctx.db.studentProfile.findUniqueOrThrow({
+      where: { id: ctx.studentId },
+      select: { gradeLevel: true },
+    });
+
+    const [mine, cohort, cohortSize] = await Promise.all([
+      ctx.db.grade.findMany({
+        where: {
+          status: "RELEASED",
+          submission: {
+            studentId: ctx.studentId,
+            assignment: { type: { in: STAR_ASSIGNMENT_TYPES } },
+          },
+        },
+        orderBy: { releasedAt: "desc" },
+        select: {
+          id: true,
+          score: true,
+          releasedAt: true,
+          submission: {
+            select: {
+              assignment: {
+                select: {
+                  title: true,
+                  type: true,
+                  pointsPossible: true,
+                  section: { select: { course: { select: { name: true } } } },
+                },
+              },
+            },
+          },
+        },
+      }),
+      ctx.db.grade.findMany({
+        where: {
+          status: "RELEASED",
+          submission: {
+            student: { gradeLevel: profile.gradeLevel },
+            assignment: { type: { in: STAR_ASSIGNMENT_TYPES } },
+          },
+        },
+        select: { score: true, submission: { select: { studentId: true } } },
+      }),
+      ctx.db.studentProfile.count({
+        where: { gradeLevel: profile.gradeLevel },
+      }),
+    ]);
+
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    let tests = 0;
+    let coursework = 0;
+    let thisWeek = 0;
+    for (const grade of mine) {
+      const stars = starsFor(grade.score);
+      if (grade.submission.assignment.type === "EXAM") tests += stars;
+      else coursework += stars;
+      if (grade.releasedAt && grade.releasedAt.getTime() >= weekAgo) {
+        thisWeek += stars;
+      }
+    }
+    const total = tests + coursework;
+
+    // Rank is one more than the number of peers who have out-earned us.
+    const totals = new Map<string, number>();
+    for (const grade of cohort) {
+      const id = grade.submission.studentId;
+      totals.set(id, (totals.get(id) ?? 0) + starsFor(grade.score));
+    }
+    const ahead = [...totals.values()].filter((stars) => stars > total).length;
+
+    return {
+      total,
+      tests,
+      coursework,
+      thisWeek,
+      gradeLevel: profile.gradeLevel,
+      rank: ahead + 1,
+      cohortSize,
+      ...rewardProgress(total),
+      recent: mine.slice(0, 3).map((grade) => {
+        const { assignment } = grade.submission;
+        const score = grade.score ?? 0;
+        return {
+          id: grade.id,
+          title: assignment.title,
+          courseName: assignment.section.course.name,
+          score,
+          pointsPossible: assignment.pointsPossible,
+          stars: starsFor(score),
+          isPerfect: score >= assignment.pointsPossible,
+        };
+      }),
     };
   }),
 

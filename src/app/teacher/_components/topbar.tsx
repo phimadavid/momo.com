@@ -5,7 +5,7 @@ import {
   PlusCircleIcon,
   SearchIcon,
 } from "~/app/_components/icons";
-import { Avatar } from "./ui";
+import { Avatar } from "~/app/_components/ui";
 
 export function Topbar({
   termName,

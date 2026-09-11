@@ -2,6 +2,7 @@ import { type Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth } from "~/server/auth";
+import { homeForRole } from "~/server/auth/home";
 import { api } from "~/trpc/server";
 import { Sidebar } from "./_components/sidebar";
 import { Topbar } from "./_components/topbar";
@@ -19,7 +20,7 @@ export default async function TeacherLayout({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  if (session.user.role === "STUDENT") redirect("/");
+  if (session.user.role === "STUDENT") redirect(homeForRole("STUDENT"));
 
   const [me, overview, unread] = await Promise.all([
     api.user.me(),

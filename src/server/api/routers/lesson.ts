@@ -332,12 +332,19 @@ export const lessonRouter = createTRPCRouter({
             order: true,
             summary: true,
             videoDurationSeconds: true,
+            resources: {
+              orderBy: { order: "asc" },
+              take: 1,
+              select: { title: true, kind: true },
+            },
+            _count: { select: { resources: true } },
             unit: {
               select: {
                 id: true,
                 order: true,
                 title: true,
                 course: { select: { id: true, name: true, code: true } },
+                _count: { select: { lessons: true } },
               },
             },
           },
@@ -346,11 +353,25 @@ export const lessonRouter = createTRPCRouter({
     });
     if (!progress) return null;
 
+    // "2 of 3 lessons done" for the unit the student is working through.
+    const unitLessonsCompleted = await ctx.db.lessonProgress.count({
+      where: {
+        studentId: ctx.studentId,
+        status: "COMPLETED",
+        lesson: { unitId: progress.lesson.unit.id },
+      },
+    });
+
     const remainingSeconds = Math.max(
       0,
       (progress.lesson.videoDurationSeconds ?? 0) - progress.positionSeconds,
     );
-    return { ...progress, remainingSeconds };
+    return {
+      ...progress,
+      remainingSeconds,
+      unitLessonCount: progress.lesson.unit._count.lessons,
+      unitLessonsCompleted,
+    };
   }),
 
   /** How many students are currently viewing a lesson. */

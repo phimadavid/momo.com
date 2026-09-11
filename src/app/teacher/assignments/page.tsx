@@ -2,9 +2,9 @@ import { type Metadata } from "next";
 
 import { ClipboardIcon, PlusCircleIcon } from "~/app/_components/icons";
 import { api } from "~/trpc/server";
-import { humanise } from "../_components/format";
+import { humanise } from "~/app/_components/format";
 import { PageHeader, SectionTabs } from "../_components/page-header";
-import { Card, CardHeader, EmptyState, Pill } from "../_components/ui";
+import { Card, CardHeader, EmptyState, Pill } from "~/app/_components/ui";
 
 export const metadata: Metadata = { title: "Assignments · Momo Smart" };
 export const dynamic = "force-dynamic";

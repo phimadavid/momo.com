@@ -3,8 +3,8 @@ import {
   ClipboardIcon,
   ClockIcon,
 } from "~/app/_components/icons";
-import { clock } from "./format";
-import { Card, CardHeader } from "./ui";
+import { clock } from "~/app/_components/format";
+import { Card, CardHeader } from "~/app/_components/ui";
 
 type OfficeHour = {
   id: string;

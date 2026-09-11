@@ -152,6 +152,15 @@ export default async function Home() {
                     <ArrowRightIcon className="size-4 transition group-hover:translate-x-0.5" />
                   </Link>
                 )}
+                {user.role === "STUDENT" && (
+                  <Link
+                    href="/student"
+                    className="group bg-navy hover:bg-navy-deep mt-8 inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-[15px] font-semibold text-white transition"
+                  >
+                    Open My Dashboard
+                    <ArrowRightIcon className="size-4 transition group-hover:translate-x-0.5" />
+                  </Link>
+                )}
               </>
             ) : (
               <>

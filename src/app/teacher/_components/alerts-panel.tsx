@@ -5,7 +5,7 @@ import {
   MailIcon,
   UsersIcon,
 } from "~/app/_components/icons";
-import { Avatar, Pill } from "./ui";
+import { Avatar, Pill } from "~/app/_components/ui";
 
 type Alert = {
   id: string;

@@ -7,8 +7,8 @@ import {
   SwitchIcon,
 } from "~/app/_components/icons";
 import { submitAttendance, takeAttendance } from "../actions";
-import { clock, clockOf, weekdayName } from "./format";
-import { Card, CardHeader, EmptyState, Pill } from "./ui";
+import { clock, clockOf, weekdayName } from "~/app/_components/format";
+import { Card, CardHeader, EmptyState, Pill } from "~/app/_components/ui";
 
 type Period = {
   sectionId: string;

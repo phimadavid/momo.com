@@ -4,8 +4,15 @@ import {
   ClipboardIcon,
   SlidersIcon,
 } from "~/app/_components/icons";
-import { fileSize, humanise, timeAgo } from "./format";
-import { Avatar, Card, CardHeader, EmptyState, GhostButton, Pill } from "./ui";
+import { fileSize, humanise, timeAgo } from "~/app/_components/format";
+import {
+  Avatar,
+  Card,
+  CardHeader,
+  EmptyState,
+  GhostButton,
+  Pill,
+} from "~/app/_components/ui";
 
 type QueueItem = {
   id: string;
