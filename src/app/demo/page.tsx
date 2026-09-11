@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Wordmark } from "~/app/_components/brand";
 import { CheckIcon, LockIcon } from "~/app/_components/icons";
+import { PeekingDog } from "~/app/_components/peeking-dog";
 import { env } from "~/env";
 import { DEMO_RESET_HOURS } from "~/server/demo/accounts";
 import { DemoRoleCard } from "./_components/demo-role-card";
@@ -82,13 +83,17 @@ export default function DemoPage() {
               </p>
             </>
           ) : (
-            <div className="border-line bg-surface mt-10 rounded-2xl border p-6">
-              <p className="text-ink font-semibold">
-                The live demo is offline right now.
-              </p>
-              <p className="text-muted mt-1 text-[15px]">
-                Request access below and we&apos;ll walk you through it.
-              </p>
+            // The dog pops up over this card's top edge, near its right corner.
+            <div className="relative isolate mt-12">
+              <PeekingDog side="top" />
+              <div className="border-line bg-surface relative z-10 rounded-2xl border p-6">
+                <p className="text-ink font-semibold">
+                  The live demo is offline right now.
+                </p>
+                <p className="text-muted mt-1 text-[15px]">
+                  Request access below and we&apos;ll walk you through it.
+                </p>
+              </div>
             </div>
           )}
         </section>
@@ -119,7 +124,13 @@ export default function DemoPage() {
               </ul>
             </div>
 
-            <WaitlistForm source="demo" />
+            {/* The right margin leaves room for the dog peeking past the card. */}
+            <div className="relative isolate lg:mr-24">
+              <PeekingDog />
+              <div className="relative z-10">
+                <WaitlistForm source="demo" />
+              </div>
+            </div>
           </div>
         </section>
       </main>

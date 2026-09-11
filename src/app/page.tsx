@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Wordmark } from "~/app/_components/brand";
 import { DashboardPreview } from "~/app/_components/dashboard-preview";
+import { PeekingDog } from "~/app/_components/peeking-dog";
 import {
   AlertIcon,
   ArrowRightIcon,
@@ -104,10 +105,10 @@ export default async function Home() {
             </div>
           ) : (
             <Link
-              href="/login"
+              href="/demo#waitlist"
               className="bg-navy hover:bg-navy-deep rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition"
             >
-              Sign in
+              Join waitlist
             </Link>
           )}
         </div>
@@ -198,7 +199,13 @@ export default async function Home() {
             )}
           </div>
 
-          <DashboardPreview />
+          {/* The right margin leaves room for the dog peeking past the card. */}
+          <div className="relative isolate lg:mr-24">
+            <PeekingDog />
+            <div className="relative z-10">
+              <DashboardPreview />
+            </div>
+          </div>
         </section>
 
         {/* Features */}

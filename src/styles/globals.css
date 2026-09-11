@@ -18,6 +18,33 @@
   --color-pumpkin: #f97316;
 
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+
+  /* The peeking-dog mascot sliding out from behind a card: sideways past its
+     right edge, or up over its top edge. */
+  --animate-peek: peek 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+  --animate-peek-up: peek-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+
+  @keyframes peek {
+    from {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes peek-up {
+    from {
+      opacity: 0;
+      transform: translateY(45%);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 /* Momo Smart is a light-surface product; keep the canvas stable. */
